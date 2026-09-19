@@ -3,15 +3,15 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace OiiOiiFlow;
+namespace StepFunFlow;
 
 internal sealed class GitHubActionsService
 {
-    public const string Repository = "huang1988pioneer/AutoSignOiiOii";
-    private const string Workflow = "claim-oiioii-lunch.yml";
-    private static readonly Regex ClaimJobName = new(@"^claim \((?<number>\d+)\) - (?<name>.+)$", RegexOptions.Compiled);
+    public const string Repository = "huang1988pioneer/AutoSignStepFun";
+    private const string Workflow = "stepfun-daily-check-in.yml";
+    private static readonly Regex CheckInJobName = new(@"^check-in \((?<number>\d+)\) - (?<name>.+)$", RegexOptions.Compiled);
 
-    public async Task TriggerClaimAsync()
+    public async Task TriggerCheckInAsync()
     {
         await RunGhAsync("workflow", "run", Workflow, "--repo", Repository, "--ref", "main");
     }
@@ -27,8 +27,8 @@ internal sealed class GitHubActionsService
         if (string.IsNullOrWhiteSpace(accountName))
             throw new ArgumentException("帳號名稱不可為空白。", nameof(accountName));
 
-        var secretName = $"OII_STORAGE_STATE_B64_{accountNumber}";
-        var variableName = $"OII_ACCOUNT_NAME_{accountNumber}";
+        var secretName = $"STEPFUN_STORAGE_STATE_B64_{accountNumber}";
+        var variableName = $"STEPFUN_ACCOUNT_NAME_{accountNumber}";
 
         // Pass the sensitive state through stdin so it never appears in the process command line.
         await RunGhWithInputAsync(
@@ -39,7 +39,7 @@ internal sealed class GitHubActionsService
             "variable", "set", variableName, "--repo", Repository);
     }
 
-    public async Task<DashboardSnapshot> GetSnapshotAsync(decimal pointsPerClaim)
+    public async Task<DashboardSnapshot> GetSnapshotAsync(decimal pointsPerCheckIn)
     {
         var runsJson = await RunGhAsync(
             "run", "list", "--workflow", Workflow, "--repo", Repository, "--limit", "100",
@@ -83,13 +83,13 @@ internal sealed class GitHubActionsService
 
         var successful = accounts.Where(account => account.IsConfigured && account.IsSuccessful).ToArray();
         var failed = accounts.Where(account => account.IsConfigured && account.IsCompleted && !account.IsSuccessful).ToArray();
-        var monthlySuccessfulClaims = monthlyRuns
+        var monthlySuccessfulCheckIns = monthlyRuns
             .SelectMany(run => accountResultsByRun[run.DatabaseId]
                 .Where(account => account.IsConfigured && account.IsSuccessful)
                 .Select(account => (Date: TimeZoneInfo.ConvertTime(run.CreatedAt, timeZone).Date, account.Number)))
             .Distinct()
             .Count();
-        var monthlyClaimedPoints = monthlySuccessfulClaims * pointsPerClaim;
+        var monthlyCheckInPoints = monthlySuccessfulCheckIns * pointsPerCheckIn;
 
         return new DashboardSnapshot(
             latest,
@@ -99,8 +99,8 @@ internal sealed class GitHubActionsService
             lastSuccessfulActionTime,
             lastFailedActionTime,
             consecutiveSuccessActionDays,
-            pointsPerClaim,
-            monthlyClaimedPoints);
+            pointsPerCheckIn,
+            monthlyCheckInPoints);
     }
 
     private async Task<AccountResult[]> GetAccountResultsAsync(long runId)
@@ -113,7 +113,7 @@ internal sealed class GitHubActionsService
         foreach (var job in jobs.EnumerateArray())
         {
             var name = GetString(job, "name");
-            var match = ClaimJobName.Match(name);
+            var match = CheckInJobName.Match(name);
             if (!match.Success) continue;
 
             var number = int.Parse(match.Groups["number"].Value);
@@ -213,5 +213,5 @@ internal sealed record DashboardSnapshot(
     DateTimeOffset? LastSuccessfulActionTime,
     DateTimeOffset? LastFailedActionTime,
     int ConsecutiveSuccessActionDays,
-    decimal PointsPerClaim,
-    decimal MonthlyClaimedPoints);
+    decimal PointsPerCheckIn,
+    decimal MonthlyCheckInPoints);

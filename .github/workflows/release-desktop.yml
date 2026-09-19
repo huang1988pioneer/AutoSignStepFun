@@ -38,7 +38,7 @@ jobs:
 
       - name: Publish self-contained app
         run: >-
-          dotnet publish OiiOiiFlow/OiiOiiFlow.csproj
+          dotnet publish StepFunFlow/StepFunFlow.csproj
           --configuration Release
           --runtime ${{ matrix.rid }}
           --self-contained true
@@ -53,14 +53,14 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ matrix.extension }}" = "zip" ]; then
-            (cd publish/${{ matrix.name }} && zip -r "../../dist/OiiOiiFlow-${{ matrix.name }}.zip" .)
+            (cd publish/${{ matrix.name }} && zip -r "../../dist/StepFunFlow-${{ matrix.name }}.zip" .)
           else
-            tar -C publish/${{ matrix.name }} -czf "dist/OiiOiiFlow-${{ matrix.name }}.tar.gz" .
+            tar -C publish/${{ matrix.name }} -czf "dist/StepFunFlow-${{ matrix.name }}.tar.gz" .
           fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OiiOiiFlow-${{ matrix.name }}
+          name: StepFunFlow-${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
 

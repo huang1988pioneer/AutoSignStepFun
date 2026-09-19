@@ -62,7 +62,7 @@ test('malformed history fails instead of silently discarding records', () => {
 });
 
 test('summary reads history, publishes computed statistics and preserves same-day counts on rerun', () => {
-  const root = mkdtempSync(join(tmpdir(), 'oiioii-streak-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'stepfun-streak-test-'));
   try {
     const input = join(root, 'input');
     const output = join(root, 'output');
@@ -73,7 +73,7 @@ test('summary reads history, publishes computed statistics and preserves same-da
     const yesterday = new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10);
     writeFileSync(history, JSON.stringify({ accounts: [{ account: 1, checkInDates: [yesterday] }] }));
     writeFileSync(join(input, 'one.json'), JSON.stringify({ account: 1, name: 'one', status: 'checked_in', finishedAt: timestamp, currentPoints: 0, session: { secret: 'PRIVATE_MARKER' } }));
-    const env = { ...process.env, OII_SUMMARY_DIR: output, OII_EXPECTED_ACCOUNTS: '2', OII_STREAKS_FILE: history, GITHUB_STEP_SUMMARY: '' };
+    const env = { ...process.env, STEPFUN_SUMMARY_DIR: output, STEPFUN_EXPECTED_ACCOUNTS: '2', STEPFUN_STREAKS_FILE: history, GITHUB_STEP_SUMMARY: '' };
     const script = fileURLToPath(new URL('./summarize-claim-results.mjs', import.meta.url));
     for (let run = 0; run < 2; run++) {
       execFileSync(process.execPath, [script, input], { env, stdio: 'pipe' });
@@ -84,7 +84,7 @@ test('summary reads history, publishes computed statistics and preserves same-da
       assert.equal(result.accounts[1].streak, 0);
       assert.deepEqual(result.summary, { recorded: 2, max: 2, min: 0, average: 1 });
       assert(!raw.includes('PRIVATE_MARKER'));
-      assert(readFileSync(join(output, 'oiioii-daily-summary.md'), 'utf8').includes('連續簽到天數'));
+      assert(readFileSync(join(output, 'stepfun-daily-summary.md'), 'utf8').includes('連續簽到天數'));
       writeFileSync(history, raw);
     }
   } finally {

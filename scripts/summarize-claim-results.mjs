@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { updateStreak } from './streaks.mjs';
 
 const inputDir = process.argv[2] || 'collected';
-const outputDir = process.env.OII_SUMMARY_DIR || 'artifacts';
-const expectedAccounts = Number(process.env.OII_EXPECTED_ACCOUNTS || 33);
-const sessionWarnDays = Number(process.env.OII_SESSION_WARN_DAYS) || 7;
+const outputDir = process.env.STEPFUN_SUMMARY_DIR || 'artifacts';
+const expectedAccounts = Number(process.env.STEPFUN_EXPECTED_ACCOUNTS || 33);
+const sessionWarnDays = Number(process.env.STEPFUN_SESSION_WARN_DAYS) || 7;
 
 function walkJsonFiles(dir) {
   if (!existsSync(dir)) return [];
@@ -45,7 +45,7 @@ const rows = Array.from({ length: expectedAccounts }, (_, index) => {
 });
 
 const generatedAt = new Date().toISOString();
-const historyPath = process.env.OII_STREAKS_FILE || join(outputDir, 'streaks.json');
+const historyPath = process.env.STEPFUN_STREAKS_FILE || join(outputDir, 'streaks.json');
 const history = existsSync(historyPath) ? JSON.parse(readFileSync(historyPath, 'utf8')) : { accounts: [] };
 if (!Array.isArray(history.accounts)) throw new Error('Invalid streak history: accounts must be an array');
 const previousAccounts = new Map(history.accounts.map((row) => [Number(row.account), row]));
@@ -76,7 +76,7 @@ const runUrl = process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY &&
   : null;
 
 const lines = [
-  '## OiiOii daily lunch',
+  '## StepFun daily check-in',
   '',
   `**${headline}**`,
   '',
@@ -103,7 +103,7 @@ if (expiring.length) {
   lines.push(
     `### ⏳ Logins expiring within ${sessionWarnDays} day(s)`,
     '',
-    'Re-run the OiiOiiFlow login for these accounts and update their `OII_STORAGE_STATE_B64_*` Secret.',
+    'Re-run the StepFun login for these accounts and update their `STEPFUN_STORAGE_STATE_B64_*` Secret.',
     '',
     '| # | Account | Days left | Expires | Credential |',
     '| ---: | --- | ---: | --- | --- |',
@@ -150,7 +150,7 @@ mkdirSync(outputDir, { recursive: true });
 writeFileSync(join(outputDir, 'streaks.json'), `${JSON.stringify({
   generatedAt,
   runUrl,
-  title: 'OiiOii daily check-in results',
+  title: 'StepFun daily check-in results',
   accounts,
   timeZone: 'Asia/Taipei',
   streakSource: 'recorded_check_ins',
@@ -161,9 +161,9 @@ writeFileSync(join(outputDir, 'streaks.json'), `${JSON.stringify({
     average: accounts.length ? Number((accounts.reduce((sum, row) => sum + row.streak, 0) / accounts.length).toFixed(1)) : 0,
   },
 }, null, 2)}\n`);
-writeFileSync(join(outputDir, 'oiioii-daily-summary.md'), markdown);
+writeFileSync(join(outputDir, 'stepfun-daily-summary.md'), markdown);
 writeFileSync(
-  join(outputDir, 'oiioii-daily-summary.json'),
+  join(outputDir, 'stepfun-daily-summary.json'),
   `${JSON.stringify(
     {
       generatedAt,

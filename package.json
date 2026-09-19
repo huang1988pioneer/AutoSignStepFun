@@ -1,12 +1,12 @@
 {
-  "name": "oiioii-daily-lunch",
+  "name": "stepfun-daily-check-in",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "claim": "node scripts/claim-lunch.mjs",
-    "check": "node --check scripts/claim-lunch.mjs && node --check scripts/current-points.mjs && node --check scripts/session-store.mjs && node --check scripts/summarize-claim-results.mjs && node --check scripts/streaks.mjs",
-    "test": "node --test scripts/streaks.test.mjs",
+    "claim": "node scripts/claim-daily-check-in.mjs",
+    "check": "node --check scripts/claim-daily-check-in.mjs && node --check scripts/stepfun-mission.mjs && node --check scripts/current-points.mjs && node --check scripts/session-store.mjs && node --check scripts/summarize-claim-results.mjs && node --check scripts/streaks.mjs",
+    "test": "node --test scripts/streaks.test.mjs scripts/stepfun-mission.test.mjs",
     "summary": "node scripts/summarize-claim-results.mjs"
   },
   "devDependencies": {

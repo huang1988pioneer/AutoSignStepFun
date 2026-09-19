@@ -1,27 +1,28 @@
-# AutoSignOiiOii
+# AutoSignStepFun
 
-使用 GitHub Actions 自動領取 OiiOii 每日盒飯。工作流程每日會在多個台北時間時段執行，也可以手動觸發；支援最多 33 個帳號，並在失敗時保留截圖以利排查。
+使用 GitHub Actions 自動完成 StepFun 每日簽到。工作流程每天在多個台北時間時段執行，也可以手動觸發；支援最多 33 個帳號，失敗時會保留截圖與每帳號結果供排查。
 
 ## 功能
 
 - 每日自動執行，或從 GitHub Actions 手動執行
-- 支援 1～33 個 OiiOii 帳號；未設定 Secret 的編號會自動略過
+- 支援 1～33 個 StepFun 帳號；未設定 Secret 的編號會自動略過
 - 優先使用 Playwright Storage State，也可使用 Cookie Header
-- 找不到按鈕或暫時失敗時，最多重試 3 次
-- 自動上傳執行截圖為 Artifact，保留 7 天
+- 開啟 StepFun 新人福利頁，點擊每日簽到（若頁面自動觸發也能直接偵測）
+- 以官方 `daily_check_in` mission response 確認成功；「今日已簽到」會視為成功
+- 暫時失敗時最多重試 2 次，並上傳截圖 Artifact（保留 7 天）
 - 不會嘗試繞過 OTP、Google 登入或 CAPTCHA
 
 ## 設定 GitHub Actions
 
 ### 1. 取得登入狀態
 
-建議使用 Playwright Storage State。登入 OiiOii 後執行：
+建議使用 Playwright Storage State。登入 StepFun 後執行：
 
 ```bash
-npx playwright codegen --save-storage=auth.json https://www.oiioii.ai/zh-Hant/
+npx playwright codegen --save-storage=auth.json https://chat.stepfun.com/
 ```
 
-完成登入後關閉瀏覽器，將 `auth.json` 轉為單行 Base64：
+完成登入與必要的驗證後關閉瀏覽器，將 `auth.json` 轉為單行 Base64：
 
 ```bash
 # macOS / Linux
@@ -31,30 +32,30 @@ base64 -w0 auth.json
 [Convert]::ToBase64String([IO.File]::ReadAllBytes('auth.json'))
 ```
 
-若無法使用 Storage State，也可在瀏覽器開發者工具的 Network 面板中，複製 `oiioii.ai` 請求的完整 `Cookie` header。
+若無法使用 Storage State，也可在瀏覽器開發者工具 Network 面板中，複製 `chat.stepfun.com` 請求的完整 `Cookie` header。
 
 ### 2. 新增 Repository Secrets
 
-前往 GitHub 儲存庫的 **Settings → Secrets and variables → Actions**，建立下列 Secrets。
+前往 GitHub 儲存庫的 **Settings → Secrets and variables → Actions**，建立下列 Secrets：
 
 | Secret | 用途 |
 | --- | --- |
-| `OII_STORAGE_STATE_B64_1` … `OII_STORAGE_STATE_B64_33` | 各帳號的 Base64 Storage State（建議） |
-| `OII_COOKIE_1` … `OII_COOKIE_33` | 各帳號的 Cookie Header（可替代 Storage State） |
+| `STEPFUN_STORAGE_STATE_B64_1` … `STEPFUN_STORAGE_STATE_B64_33` | 各帳號的 Base64 Storage State（建議） |
+| `STEPFUN_COOKIE_1` … `STEPFUN_COOKIE_33` | 各帳號的 Cookie Header（可替代 Storage State） |
 
 每個帳號只要設定其中一種登入方式即可，且 Storage State 優先。workflow 會執行全部 33 個編號；未設定 Secret 的帳號會自動略過，不必連續編號。
 
-目前已具名的帳號為 `1`（huang1988pioneer）、`2`（abuhg17）、`3`（goldshoot0720）；其餘編號可按需要再補 Secret。
+可選擇建立同編號的 Actions Variables `STEPFUN_ACCOUNT_NAME_1` … `STEPFUN_ACCOUNT_NAME_33`，用來顯示帳號別名；未設定時會使用 `account-N`（前 3 個編號有內建預設名稱）。
 
 請勿把 `auth.json`、Cookie 或任何登入憑證提交到儲存庫。
 
 ### 3. 手動驗證
 
-開啟儲存庫的 **Actions** 分頁，選擇 **Claim OiiOii daily lunch**，再按 **Run workflow**。執行完成後，可在 Job Summary 查看每日彙總，並在該次 workflow 的 Artifacts 下載截圖與 `oiioii-claim-report`。
+開啟儲存庫的 **Actions** 分頁，選擇 **StepFun daily check-in**，再按 **Run workflow**。執行完成後，可在 Job Summary 查看每日彙總，並在該次 workflow 的 Artifacts 下載每帳號結果、截圖與 `stepfun-check-in-report`。
 
-`daily-summary` 也會使用 `GITHUB_TOKEN` 自動建立或更新 **`result` 分支**（單數）的 [`streaks.json`](https://github.com/huang1988pioneer/AutoSignOiiOii/blob/result/streaks.json)，並將同一份 JSON 附在 `oiioii-claim-report`。只有此 job 取得 `contents: write` 權限；若儲存庫規則禁止 Actions 寫入該分支，發布步驟會報錯。
+`daily-summary` 會使用 `GITHUB_TOKEN` 自動建立或更新 **`result` 分支**的 [`streaks.json`](https://github.com/huang1988pioneer/AutoSignStepFun/blob/result/streaks.json)，並將摘要檔附在 `stepfun-check-in-report`。只有此 job 取得 `contents: write` 權限；若儲存庫規則禁止 Actions 寫入該分支，發布步驟會失敗。
 
-JSON 採用參考專案的 `generatedAt`、`runUrl`、`title`、`accounts`、`summary` 結構；每個帳號提供 `account`、`name`、`label`、`status`、`finishedAt`、`currentPoints` 與相同數值的 `remainingCredits`。零點保留為 `0`，無法取得的點數為 `null`。連續簽到天數 `streak` 由本專案的成功紀錄計算（`streakSource: recorded_check_ins`），以台北日期為準，並保存 `lastCheckInDate` 與去重後的 `checkInDates`。同日重跑或已領取不會重複加天；連續兩日成功會加 1，漏簽後下次成功從 1 開始。同日失敗或略過不會抹除已成功紀錄，昨日的連續紀錄保留到今日結束；超過一天未成功則顯示 0。首次啟用從首次觀測成功算起，不追溯網站上既有天數。`summary.max/min/average` 統計全部帳號（含 0 天），`summary.recorded` 為帳號筆數。Job Summary 同時顯示連續簽到天數。本機執行預設讀取輸出目錄既有的 `streaks.json`，也可用 `OII_STREAKS_FILE` 指定歷史檔案；歷史格式損壞會停止產生，避免覆蓋紀錄。公開檔案不包含登入狀態、Cookie 或錯誤訊息。
+公開的 `streaks.json` 只包含顯示資料，不包含登入狀態、Cookie 或錯誤訊息。每個帳號提供 `account`、`name`、`label`、`status`、`finishedAt`、`currentPoints`、`remainingCredits`、`streak`、`lastCheckInDate` 與去重後的 `checkInDates`。連續簽到以台北日期計算，同日重跑或已簽到不會重複加天。
 
 ## 每日自動執行時段
 
@@ -70,19 +71,19 @@ GitHub Actions 每天會在下列台北時間（UTC+8）各自執行一次：
 | 13:00–14:00 | 整點觸發後，隨機等待 0–59 分鐘再開始 |
 | 21:00–22:00 | 整點觸發後，隨機等待 0–59 分鐘再開始 |
 
-同一次 workflow 中，帳號 1 會先執行；每個後續帳號都會在前一個帳號後再隨機延遲 **5–15 秒**，避免 33 個帳號同時操作。GitHub 的排程本身也可能延遲，因此實際開始時間可能略晚於上述時段。
+同一次 workflow 中，帳號 1 會先執行；後續帳號再各自隨機延遲 5–15 秒，避免 33 個帳號同時操作。GitHub 的排程本身也可能延遲。
 
 ## 在本機執行
 
-需求：Node.js 22（CI 使用版本）與可安裝 Chromium 的環境。
+需求：Node.js 22 與可安裝 Chromium 的環境。
 
 ```bash
 npm install
 npx playwright install chromium
 
 # 二選一：設定 Cookie 或 Storage State
-export OII_COOKIE='session=...'
-# export OII_STORAGE_STATE_B64='...'
+export STEPFUN_COOKIE='session=...'
+# export STEPFUN_STORAGE_STATE_B64='...'
 
 npm run claim
 ```
@@ -92,55 +93,59 @@ PowerShell：
 ```powershell
 npm install
 npx playwright install chromium
-$env:OII_COOKIE = 'session=...'
-# 或：$env:OII_STORAGE_STATE_B64 = '...'
+$env:STEPFUN_COOKIE = 'session=...'
+# 或：$env:STEPFUN_STORAGE_STATE_B64 = '...'
 
 npm run claim
 ```
 
-可先檢查腳本語法：
+可先檢查腳本語法與執行測試：
 
 ```bash
 npm run check
+npm test
 ```
+
+本機結果預設寫入 `artifacts/claim-result.json`；截圖寫入 `screenshots/`。
 
 ## 環境變數
 
 | 變數 | 預設值 | 說明 |
 | --- | --- | --- |
-| `OII_STORAGE_STATE_B64` | 無 | Base64 編碼的 Playwright Storage State JSON |
-| `OII_COOKIE` | 無 | 完整 Cookie Header |
-| `OII_ACCOUNT_NAME` | `default` | 用於日誌與截圖檔名的帳號識別 |
-| `OII_MAX_RETRIES` | `3` | 最大嘗試次數 |
-| `OII_SCREENSHOT_DIR` | `./screenshots` | 截圖輸出資料夾 |
+| `STEPFUN_STORAGE_STATE_B64` | 無 | Base64 編碼的 Playwright Storage State JSON |
+| `STEPFUN_COOKIE` | 無 | 完整 Cookie Header |
+| `STEPFUN_ACCOUNT_NAME` | `default` | 用於日誌與截圖檔名的帳號識別 |
+| `STEPFUN_ACCOUNT_NUMBER` | 無 | 目前帳號編號，用於結果與 session rotation |
+| `STEPFUN_MAX_RETRIES` | `2` | 最大嘗試次數 |
+| `STEPFUN_SCREENSHOT_DIR` | `./screenshots` | 截圖輸出資料夾 |
+| `STEPFUN_RESULT_DIR` | `./artifacts` | 結果輸出資料夾 |
+| `STEPFUN_BROWSER` | `chromium` | `chromium`、`firefox` 或 `edge` |
+| `STEPFUN_SECRET_WRITE_TOKEN` | 無 | 可選；具備 Secrets 讀寫權限的 PAT，用於寫回更新後的 Storage State |
 
-## 桌面登入工具（macOS、Linux、Windows）
+## 桌面登入工具
 
-專案內含 Avalonia 桌面工具，可協助建立並複製 Storage State：
+專案內含 Avalonia 桌面工具，可協助建立、複製並同步 Storage State：
 
 ```bash
-dotnet run --project OiiOiiFlow/OiiOiiFlow.csproj
+dotnet run --project StepFunFlow/StepFunFlow.csproj
 ```
 
 1. 選擇帳號編號，按下建立登入狀態。
-2. 在開啟的瀏覽器完成 OiiOii 登入，然後關閉瀏覽器。
-3. 預設會自動同步到 GitHub Actions：登入狀態寫入 `OII_STORAGE_STATE_B64_N` Secret，帳號別名寫入 `OII_ACCOUNT_NAME_N` Variable；也可以關閉自動同步後改用手動按鈕或複製 Base64。
+2. 在開啟的瀏覽器完成 StepFun 登入，然後關閉瀏覽器。
+3. 預設會自動同步到 GitHub Actions：登入狀態寫入 `STEPFUN_STORAGE_STATE_B64_N` Secret，帳號別名寫入 `STEPFUN_ACCOUNT_NAME_N` Variable；也可以關閉自動同步後改用手動按鈕或複製 Base64。
 
 首次同步前，請在 PowerShell 執行 `gh auth login -h github.com`，並以具備此儲存庫 Actions Secrets 與 Variables 寫入權限的 GitHub 帳號完成登入。登入狀態會透過 GitHub CLI 的標準輸入傳送，不會出現在命令列、工具畫面或日誌中。
 
-工具會優先使用電腦已安裝的 Microsoft Edge，其次是 Google Chrome，因此通常不需要下載 Playwright Chromium。若兩者都找不到，才會下載內建 Chromium；下載或解壓縮超過 5 分鐘會自動停止並顯示可採取的修復方式，不會在背景無限等待。
-
-工具與 workflow 皆使用 `01` 至 `33` 編號。選好編號後，把 Base64 貼到對應的 `OII_STORAGE_STATE_B64_N` 即可；沒有 Secret 的編號不會實際開啟瀏覽器。
+工具會優先使用電腦已安裝的 Microsoft Edge，其次是 Google Chrome；兩者都找不到時才會下載 Playwright Chromium。
 
 ## 疑難排解
 
-`daily-summary` 的 Account results 表會顯示各帳號的「當前點數」，來源是簽到流程結束後重新載入首頁的右上角點數欄，並保存於結果 JSON 的 `currentPoints`。讀取失敗或舊結果沒有點數時顯示「無法取得」；實際零點會顯示 `0`。既有 workflow run 的摘要不會追溯更新。
-
-- **登入狀態過期**：重新取得 Storage State 或 Cookie，並更新對應的 GitHub Secret。
-- **找不到每日領取按鈕**：到 workflow 的 Artifact 查看截圖；OiiOii 的 UI 若有變更，可能需要調整 `scripts/claim-lunch.mjs` 的選擇器。
-- **排程沒有準時執行**：GitHub Actions 的排程可能延遲，尤其在整點附近；可先手動執行驗證設定。
+- **登入狀態過期**：重新取得 Storage State 或 Cookie，並更新對應的 `STEPFUN_*` Secret。
+- **沒有觀察到 `daily_check_in`**：到 workflow Artifact 查看 `daily-check-in-not-observed` 截圖；StepFun 頁面若改版，可能需要調整 `scripts/claim-daily-check-in.mjs` 的簽到控制項選擇器或 mission endpoint。
+- **已簽到卻顯示失敗**：查看結果訊息；程式會辨識常見的「今日已簽到」文案，若服務回傳新的文案，可補到 `scripts/stepfun-mission.mjs`。
+- **排程沒有準時執行**：GitHub Actions 的排程可能延遲，先手動執行驗證設定。
 - **需要 OTP、Google 登入或 CAPTCHA**：先在本機正常完成登入，再更新 Storage State／Cookie；此專案不會自動繞過驗證。
 
 ## 安全提醒
 
-登入憑證等同帳號存取權。僅將它們放在 GitHub Secrets 或本機環境變數中，並在懷疑外洩時立即撤銷登入工作階段與更新憑證。
+登入憑證等同帳號存取權。僅將它們放在 GitHub Secrets 或本機環境變數中；若懷疑外洩，請立即撤銷 StepFun 登入工作階段並更新憑證。

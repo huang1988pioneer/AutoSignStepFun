@@ -1,8 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="OiiOiiFlow.MainWindow"
+        x:Class="StepFunFlow.MainWindow"
         Width="920" Height="840" MinWidth="760" MinHeight="680"
-        Title="OiiOii Flow — 登入狀態擷取器"
+        Title="StepFun Flow — 登入狀態擷取器"
         Background="#F6F8FA">
   <Window.Styles>
     <Style Selector="Border.panel"><Setter Property="Background" Value="White" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="24" /></Style>
@@ -17,9 +17,9 @@
     <Border Background="#102A2C" Padding="25">
       <StackPanel Spacing="20">
         <StackPanel Spacing="5">
-          <TextBlock Text="OiiOii Flow" FontSize="22" FontWeight="Bold" Foreground="White" />
+          <TextBlock Text="StepFun Flow" FontSize="22" FontWeight="Bold" Foreground="White" />
           <TextBlock Text="安全登入狀態擷取器" Foreground="#B8D8D4" />
-          <TextBlock Text="每日自動執行（台北時間）&#10;05:00~06:00&#10;13:00~14:00&#10;21:00~22:00&#10;各時段內隨機啟動。" TextWrapping="Wrap" FontSize="11" Foreground="#9FC5C0" />
+          <TextBlock Text="每日自動執行（台北時間）&#10;05:00~06:00&#10;08:00 · 08:18 · 09:19 · 11:00&#10;13:00~14:00&#10;21:00~22:00&#10;整點時段內隨機啟動。" TextWrapping="Wrap" FontSize="11" Foreground="#9FC5C0" />
         </StackPanel>
         <Border Background="#1B4242" CornerRadius="8" Padding="14">
           <StackPanel Spacing="7">
@@ -46,23 +46,23 @@
         <StackPanel Spacing="5">
           <TextBlock Classes="eyebrow" Text="GITHUB ACTIONS" />
           <TextBlock Text="執行儀表板" FontSize="28" FontWeight="SemiBold" Foreground="#172B36" />
-          <TextBlock Classes="muted" Text="手動執行每日領取、查看最新 workflow 結果與帳號成功情況。" TextWrapping="Wrap" />
+          <TextBlock Classes="muted" Text="手動執行每日簽到、查看最新 workflow 結果與帳號成功情況。" TextWrapping="Wrap" />
         </StackPanel>
 
         <Border x:Name="DashboardSection" Classes="panel">
           <StackPanel Spacing="14">
             <StackPanel Spacing="4">
               <TextBlock Text="GitHub Actions 儀表板" FontSize="20" FontWeight="SemiBold" Foreground="#172B36" />
-              <TextBlock Classes="muted" Text="手動執行每日領取、讀取最新 workflow 結果，並依台北日期統計成功連續天數。" TextWrapping="Wrap" />
+              <TextBlock Classes="muted" Text="手動執行每日簽到、讀取最新 workflow 結果，並依台北日期統計成功連續天數。" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Button x:Name="TriggerClaimButton" Classes="primary" Click="TriggerClaimButton_OnClick">手動觸發每日領取</Button>
+              <Button x:Name="TriggerCheckInButton" Classes="primary" Click="TriggerCheckInButton_OnClick">手動觸發每日簽到</Button>
               <Button x:Name="RefreshDashboardButton" Click="RefreshDashboardButton_OnClick">更新執行結果</Button>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Classes="muted" Text="每帳號每日點數" VerticalAlignment="Center" />
-              <TextBox x:Name="PointsPerClaimTextBox" Width="70" Text="20" />
-              <TextBlock Classes="muted" Text="可自行調整，用於本月已領點數累計。" VerticalAlignment="Center" />
+              <TextBox x:Name="PointsPerCheckInTextBox" Width="70" Text="60" />
+              <TextBlock Classes="muted" Text="可自行調整，用於本月已獲點數累計。" VerticalAlignment="Center" />
             </StackPanel>
             <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="18" RowSpacing="14">
               <StackPanel Spacing="3">
@@ -74,7 +74,7 @@
                 <TextBlock x:Name="ConsecutiveSuccessActionDaysMetric" Text="—" FontSize="22" FontWeight="SemiBold" Foreground="#0F766E" />
               </StackPanel>
               <StackPanel Grid.Column="2" Spacing="3">
-                <TextBlock Classes="muted" Text="本月已領點數" FontSize="12" />
+                <TextBlock Classes="muted" Text="本月已獲點數" FontSize="12" />
                 <TextBlock x:Name="MonthlyPointsMetric" Text="—" FontSize="22" FontWeight="SemiBold" Foreground="#0F766E" />
               </StackPanel>
               <StackPanel Grid.Row="1" Spacing="3">
@@ -129,7 +129,7 @@
                   <TextBlock x:Name="AccountAliasText" Classes="muted" FontSize="12" IsVisible="False" />
                 </StackPanel>
                 <Border Background="#E7F5F2" CornerRadius="6" Padding="12,7">
-                  <TextBlock x:Name="SecretNameText" Text="OII_STORAGE_STATE_B64_1" Foreground="#0A5A54" FontFamily="Consolas" />
+                  <TextBlock x:Name="SecretNameText" Text="STEPFUN_STORAGE_STATE_B64_1" Foreground="#0A5A54" FontFamily="Consolas" />
                 </Border>
               </StackPanel>
               <CheckBox x:Name="AutoPublishActionsCheckBox" IsChecked="True" Content="登入完成後自動同步到 GitHub Actions" />
@@ -141,7 +141,7 @@
             <TextBlock Classes="stepNumber" Text="02" VerticalAlignment="Top" />
             <StackPanel Grid.Column="1" Spacing="11">
               <TextBlock Text="執行登入流程" FontWeight="SemiBold" FontSize="16" />
-              <TextBlock Classes="muted" Text="按下按鈕後會開啟瀏覽器。請自行完成登入，確認已進入 OiiOii 首頁後關閉瀏覽器；不要在這個工具中貼入密碼或驗證碼。" TextWrapping="Wrap" />
+              <TextBlock Classes="muted" Text="按下按鈕後會開啟瀏覽器。請自行完成登入，確認已進入 StepFun 首頁後關閉瀏覽器；不要在這個工具中貼入密碼或驗證碼。" TextWrapping="Wrap" />
               <Button x:Name="RunFlowButton" Classes="primary" HorizontalAlignment="Left" Click="RunFlowButton_OnClick">開始登入並建立狀態</Button>
             </StackPanel>
           </Grid>

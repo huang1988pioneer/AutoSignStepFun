@@ -168,7 +168,7 @@ async function githubRequest(url, { token, method = 'GET', body } = {}) {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'oiioii-daily-lunch',
+      'User-Agent': 'stepfun-daily-check-in',
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,

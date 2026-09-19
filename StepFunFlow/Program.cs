@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace OiiOiiFlow;
+namespace StepFunFlow;
 
 internal static class Program
 {

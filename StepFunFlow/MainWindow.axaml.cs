@@ -6,11 +6,11 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 
-namespace OiiOiiFlow;
+namespace StepFunFlow;
 
 public partial class MainWindow : Window
 {
-    private const string OiiOiiUrl = "https://www.oiioii.ai/";
+    private const string StepFunUrl = "https://chat.stepfun.com/";
     private const int AccountCount = 33;
     private readonly string _workspace = FindWorkspace();
     private readonly GitHubActionsService _githubActions = new();
@@ -31,8 +31,8 @@ public partial class MainWindow : Window
     private int AccountNumber => AccountComboBox.SelectedIndex + 1;
     private string StateFile => Path.Combine(_workspace, $"auth-{AccountNumber:00}.json");
     private string LegacyStateFile => Path.Combine(_workspace, $"auth-{AccountNumber}.json");
-    private string SecretName => $"OII_STORAGE_STATE_B64_{AccountNumber}";
-    private string AccountNameVariable => $"OII_ACCOUNT_NAME_{AccountNumber}";
+    private string SecretName => $"STEPFUN_STORAGE_STATE_B64_{AccountNumber}";
+    private string AccountNameVariable => $"STEPFUN_ACCOUNT_NAME_{AccountNumber}";
     private string? AccountAlias => _accountAliases.GetValueOrDefault(AccountNumber);
 
     private void UpdateSecretName()
@@ -60,7 +60,7 @@ public partial class MainWindow : Window
             var browser = await ChooseLoginBrowserAsync(_lifetimeCancellation.Token);
 
             if (File.Exists(StateFile)) File.Delete(StateFile);
-            SetStatus($"正在開啟 {browser.DisplayName}。請完成 OiiOii 登入，確認成功後關閉瀏覽器視窗。");
+            SetStatus($"正在開啟 {browser.DisplayName}。請完成 StepFun 登入，確認成功後關閉瀏覽器視窗。");
             var codegenArguments = new List<string> { "playwright", "codegen" };
             if (browser.Channel is not null)
             {
@@ -69,7 +69,7 @@ public partial class MainWindow : Window
             }
             codegenArguments.Add("--save-storage");
             codegenArguments.Add(Path.GetFileName(StateFile));
-            codegenArguments.Add(OiiOiiUrl);
+            codegenArguments.Add(StepFunUrl);
             await RunProcessAsync(
                 NodeCommandPath("npx"),
                 codegenArguments,
@@ -111,15 +111,15 @@ public partial class MainWindow : Window
     private async void PublishActionsButton_OnClick(object? sender, RoutedEventArgs e) =>
         await PublishCurrentStateToActionsAsync();
 
-    private async void TriggerClaimButton_OnClick(object? sender, RoutedEventArgs e)
+    private async void TriggerCheckInButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        TriggerClaimButton.IsEnabled = false;
+        TriggerCheckInButton.IsEnabled = false;
         RefreshDashboardButton.IsEnabled = false;
         DashboardStatusText.Text = "正在送出 GitHub Actions 手動執行請求…";
         try
         {
-            await _githubActions.TriggerClaimAsync();
-            DashboardStatusText.Text = "已觸發每日領取 workflow。啟動後按「更新執行結果」即可查看帳號進度。";
+            await _githubActions.TriggerCheckInAsync();
+            DashboardStatusText.Text = "已觸發每日簽到 workflow。啟動後按「更新執行結果」即可查看帳號進度。";
         }
         catch (Exception exception)
         {
@@ -127,7 +127,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            TriggerClaimButton.IsEnabled = true;
+            TriggerCheckInButton.IsEnabled = true;
             RefreshDashboardButton.IsEnabled = true;
         }
     }
@@ -148,13 +148,13 @@ public partial class MainWindow : Window
 
     private async void RefreshDashboardButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        TriggerClaimButton.IsEnabled = false;
+        TriggerCheckInButton.IsEnabled = false;
         RefreshDashboardButton.IsEnabled = false;
         DashboardStatusText.Text = "正在讀取 GitHub Actions 執行紀錄…";
         try
         {
-            var pointsPerClaim = ParsePointsPerClaim();
-            var snapshot = await _githubActions.GetSnapshotAsync(pointsPerClaim);
+            var pointsPerCheckIn = ParsePointsPerCheckIn();
+            var snapshot = await _githubActions.GetSnapshotAsync(pointsPerCheckIn);
             RenderDashboard(snapshot);
         }
         catch (Exception exception)
@@ -163,29 +163,29 @@ public partial class MainWindow : Window
         }
         finally
         {
-            TriggerClaimButton.IsEnabled = true;
+            TriggerCheckInButton.IsEnabled = true;
             RefreshDashboardButton.IsEnabled = true;
         }
     }
 
-    private decimal ParsePointsPerClaim()
+    private decimal ParsePointsPerCheckIn()
     {
-        if (decimal.TryParse(PointsPerClaimTextBox.Text, out var points) && points >= 0) return points;
-        PointsPerClaimTextBox.Text = "20";
-        return 20;
+        if (decimal.TryParse(PointsPerCheckInTextBox.Text, out var points) && points >= 0) return points;
+        PointsPerCheckInTextBox.Text = "60";
+        return 60;
     }
 
     private void RenderDashboard(DashboardSnapshot snapshot)
     {
         SuccessfulAccountsMetric.Text = $"{snapshot.SuccessfulAccounts.Length} 個";
         ConsecutiveSuccessActionDaysMetric.Text = $"{snapshot.ConsecutiveSuccessActionDays} 天";
-        MonthlyPointsMetric.Text = snapshot.MonthlyClaimedPoints.ToString("0.##");
+        MonthlyPointsMetric.Text = snapshot.MonthlyCheckInPoints.ToString("0.##");
         LastSuccessfulActionMetric.Text = FormatActionTime(snapshot.LastSuccessfulActionTime);
         LastFailedActionMetric.Text = FormatActionTime(snapshot.LastFailedActionTime);
 
         if (snapshot.LatestRun is null)
         {
-            DashboardStatusText.Text = "找不到每日領取 workflow 的執行紀錄。";
+            DashboardStatusText.Text = "找不到每日簽到 workflow 的執行紀錄。";
             ActionAccountResultsPanel.Children.Clear();
             return;
         }
@@ -207,8 +207,8 @@ public partial class MainWindow : Window
             var result = !account.IsConfigured
                 ? "尚未設定登入狀態"
                 : account.IsSuccessful
-                ? "登入有效、領取流程成功"
-                : account.IsCompleted ? "登入或領取流程失敗" : "尚在執行或未設定";
+                ? "登入有效、簽到流程成功"
+                : account.IsCompleted ? "登入或簽到流程失敗" : "尚在執行或未設定";
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("78,160,*") };
             row.Children.Add(new TextBlock { Text = $"帳號 {account.Number:00}", FontWeight = Avalonia.Media.FontWeight.SemiBold });
             var aliasText = new TextBlock { Text = alias, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis };
@@ -242,7 +242,7 @@ public partial class MainWindow : Window
         if (duplicateAccounts.Count > 0)
         {
             ResultText.Text = $"偵測到與帳號 {string.Join("、", duplicateAccounts.Select(number => number.ToString("00")))} 相同的登入狀態，未複製到剪貼簿。";
-            StatusText.Text = "請使用不同的 OiiOii 帳號重新登入後再建立狀態，避免重複領取。";
+            StatusText.Text = "請使用不同的 StepFun 帳號重新登入後再建立狀態，避免重複簽到。";
             return;
         }
         if (Clipboard is { } clipboard) await clipboard.SetTextAsync(encoded);
@@ -270,7 +270,7 @@ public partial class MainWindow : Window
         if (duplicateAccounts.Count > 0)
         {
             ResultText.Text = $"偵測到與帳號 {string.Join("、", duplicateAccounts.Select(number => number.ToString("00")))} 相同的登入狀態，未同步到 GitHub。";
-            SetStatus("請使用不同的 OiiOii 帳號重新登入後再建立狀態，避免重複領取。");
+            SetStatus("請使用不同的 StepFun 帳號重新登入後再建立狀態，避免重複簽到。");
             return;
         }
 
@@ -362,7 +362,7 @@ public partial class MainWindow : Window
 
     private static string AliasFile => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "OiiOiiFlow",
+        "StepFunFlow",
         "account-aliases.json");
 
     private static Dictionary<int, string> LoadAccountAliases()
@@ -642,7 +642,7 @@ public partial class MainWindow : Window
 
         var workspace = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "OiiOiiFlow",
+            "StepFunFlow",
             "workspace");
         Directory.CreateDirectory(workspace);
         EnsureNodeProjectFiles(workspace);
@@ -653,7 +653,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var probe = Path.Combine(directory, $".oiioii-flow-write-test-{Guid.NewGuid():N}");
+            var probe = Path.Combine(directory, $".stepfun-flow-write-test-{Guid.NewGuid():N}");
             File.WriteAllText(probe, string.Empty);
             File.Delete(probe);
             return true;
@@ -671,7 +671,7 @@ public partial class MainWindow : Window
         {
             File.WriteAllText(packageJson, """
             {
-              "name": "oiioii-flow-login-workspace",
+              "name": "stepfun-flow-login-workspace",
               "private": true,
               "version": "1.0.0",
               "type": "module",
