@@ -10,7 +10,8 @@ export function parsePoints(text) {
 
 export async function readCurrentPoints(page) {
   const pills = page.locator(
-    'button[title="點數"], button[title="点数"], button[title="Credits"], ' +
+    'button[title="點數"], button[title="点数"], button[title="积分"], button[title="積分"], button[title="Credits"], ' +
+    'button[aria-label*="积分"], button[aria-label*="積分"], ' +
     'button[class*="_pill_"], div[class*="_credit-container_"]',
   );
   const values = new Set();
