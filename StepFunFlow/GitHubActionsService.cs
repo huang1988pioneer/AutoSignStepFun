@@ -9,6 +9,7 @@ internal sealed class GitHubActionsService
 {
     public const string Repository = "huang1988pioneer/AutoSignStepFun";
     private const string Workflow = "stepfun-daily-check-in.yml";
+    private static string RepositoryOwner => Repository.Split('/')[0];
     private static readonly Regex CheckInJobName = new(@"^check-in \((?<number>\d+)\) - (?<name>.+)$", RegexOptions.Compiled);
 
     public async Task TriggerCheckInAsync()
@@ -132,7 +133,7 @@ internal sealed class GitHubActionsService
     private static Task<string> RunGhWithInputAsync(string input, params string[] arguments) =>
         RunGhCoreAsync(input, arguments);
 
-    private static async Task<string> RunGhCoreAsync(string? input, IReadOnlyList<string> arguments)
+    private static async Task<string> RunGhCoreAsync(string? input, IReadOnlyList<string> arguments, bool explainFailures = true)
     {
         using var process = new Process
         {
@@ -166,6 +167,7 @@ internal sealed class GitHubActionsService
         var reason = string.IsNullOrWhiteSpace(error) ? output : error;
         reason = reason.Trim();
         if (reason.Length > 1_000) reason = reason[..1_000] + "…";
+        if (!explainFailures) throw new InvalidOperationException($"GitHub CLI 執行失敗：{reason}");
         if (reason.Contains("Failed to log in", StringComparison.OrdinalIgnoreCase) ||
             reason.Contains("not logged into", StringComparison.OrdinalIgnoreCase) ||
             reason.Contains("Bad credentials", StringComparison.OrdinalIgnoreCase) ||
@@ -174,7 +176,31 @@ internal sealed class GitHubActionsService
             throw new InvalidOperationException(
                 "GitHub CLI 尚未登入或登入已過期。請在 PowerShell 執行 gh auth login -h github.com，完成後再同步。");
         }
+        if (reason.Contains("HTTP 403", StringComparison.OrdinalIgnoreCase) ||
+            reason.Contains("must have repository", StringComparison.OrdinalIgnoreCase) ||
+            reason.Contains("Resource not accessible", StringComparison.OrdinalIgnoreCase))
+        {
+            var active = await TryGetActiveAccountAsync();
+            var current = active is null ? string.Empty : $"目前使用的是 {active}。";
+            throw new InvalidOperationException(
+                $"GitHub CLI 目前的帳號沒有 {Repository} 的權限。{current}" +
+                $"寫入 Actions Secrets 需要此儲存庫的 admin 權限，請執行 gh auth switch --user {RepositoryOwner} 後再同步。");
+        }
         throw new InvalidOperationException($"GitHub CLI 執行失敗：{reason}");
+    }
+
+    /// Best-effort: the account name only sharpens an error message, so a failure here is not fatal.
+    private static async Task<string?> TryGetActiveAccountAsync()
+    {
+        try
+        {
+            var login = (await RunGhCoreAsync(null, ["api", "user", "--jq", ".login"], explainFailures: false)).Trim();
+            return login.Length == 0 ? null : login;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static TimeZoneInfo GetTaipeiTimeZone()
