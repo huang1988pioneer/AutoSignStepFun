@@ -31,18 +31,19 @@ function candidateLocators(page) {
 }
 
 export async function readCurrentPoints(page) {
+  const locators = candidateLocators(page);
+
   // The top bar hydrates after the first paint, so the balance can be absent for a
-  // moment on an otherwise finished page.
-  await page
-    .locator('header')
-    .locator('*')
-    .filter({ hasText: POINTS_ONLY_RE })
-    .first()
-    .waitFor({ state: 'visible', timeout: 5_000 })
-    .catch(() => {});
+  // moment on an otherwise finished page. Whichever rendering shows up first ends
+  // the wait; a signed-out page simply spends the full timeout and reports nothing.
+  await Promise.race(
+    locators.map((locator) =>
+      locator.first().waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {}),
+    ),
+  );
 
   const values = new Set();
-  for (const locator of candidateLocators(page)) {
+  for (const locator of locators) {
     const count = await locator.count().catch(() => 0);
     for (let index = 0; index < Math.min(count, 20); index += 1) {
       const candidate = locator.nth(index);

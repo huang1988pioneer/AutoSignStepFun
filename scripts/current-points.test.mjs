@@ -33,12 +33,18 @@ test('parsePoints accepts balances and rejects prose', () => {
 });
 
 test('readCurrentPoints reads the balance from the signed-in top bar', async (t) => {
+  // Playwright ships the headless shell and the full build separately; either one
+  // runs this test, so only skip when neither is present.
   let browser;
   try {
     browser = await chromium.launch();
-  } catch (error) {
-    t.skip(`Chromium is not installed: ${error.message.split('\n')[0]}`);
-    return;
+  } catch {
+    try {
+      browser = await chromium.launch({ channel: 'chromium' });
+    } catch (error) {
+      t.skip(`No Chromium build available: ${error.message.split('\n')[0]}`);
+      return;
+    }
   }
 
   const open = async (html) => {
