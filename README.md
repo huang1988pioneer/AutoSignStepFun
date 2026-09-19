@@ -9,6 +9,7 @@
 - 優先使用 Playwright Storage State，也可使用 Cookie Header
 - 開啟 StepFun 新人福利頁，點擊每日簽到（若頁面自動觸發也能直接偵測）
 - 以官方 `daily_check_in` mission response 確認成功；「今日已簽到」會視為成功
+- 每日排程只做簽到；開放平台（platform.stepfun.com）餘額查詢是另外手動觸發的附加功能
 - 暫時失敗時最多重試 2 次，並上傳截圖 Artifact（保留 7 天）
 - 不會嘗試繞過 OTP、Google 登入或 CAPTCHA
 
@@ -42,8 +43,10 @@ base64 -w0 auth.json
 | --- | --- |
 | `STEPFUN_STORAGE_STATE_B64_1` … `STEPFUN_STORAGE_STATE_B64_33` | 各帳號的 Base64 Storage State（建議） |
 | `STEPFUN_COOKIE_1` … `STEPFUN_COOKIE_33` | 各帳號的 Cookie Header（可替代 Storage State） |
+| `STEPFUN_PLATFORM_STORAGE_STATE_B64_1` … `_33` | 選用；開放平台餘額查詢專用的 Base64 Storage State |
+| `STEPFUN_PLATFORM_COOKIE_1` … `_33` | 選用；開放平台餘額查詢專用的 Cookie Header |
 
-每個帳號只要設定其中一種登入方式即可，且 Storage State 優先。workflow 會執行全部 33 個編號；未設定 Secret 的帳號會自動略過，不必連續編號。
+每個帳號只要設定其中一種登入方式即可，且 Storage State 優先。開放平台的兩個 Secret 只有在手動查詢餘額、而該帳號的聊天登入狀態又無法讀取 `platform.stepfun.com` 時才需要；未設定時會直接沿用聊天登入狀態。workflow 會執行全部 33 個編號；未設定 Secret 的帳號會自動略過，不必連續編號。
 
 可選擇建立同編號的 Actions Variables `STEPFUN_ACCOUNT_NAME_1` … `STEPFUN_ACCOUNT_NAME_33`，用來顯示帳號別名；未設定時會使用 `account-N`（前 3 個編號有內建預設名稱）。
 
@@ -51,11 +54,11 @@ base64 -w0 auth.json
 
 ### 3. 手動驗證
 
-開啟儲存庫的 **Actions** 分頁，選擇 **StepFun daily check-in**，再按 **Run workflow**。執行完成後，可在 Job Summary 查看每日彙總，並在該次 workflow 的 Artifacts 下載每帳號結果、截圖與 `stepfun-check-in-report`。
+開啟儲存庫的 **Actions** 分頁，選擇 **StepFun daily check-in**，再按 **Run workflow**。手動執行時可勾選 **Also read the open platform account balance**，才會順便查詢開放平台餘額；排程執行一律只做簽到。執行完成後，可在 Job Summary 查看每日彙總，並在該次 workflow 的 Artifacts 下載每帳號結果、截圖與 `stepfun-check-in-report`。
 
 `daily-summary` 會使用 `GITHUB_TOKEN` 自動建立或更新 **`result` 分支**的 [`streaks.json`](https://github.com/huang1988pioneer/AutoSignStepFun/blob/result/streaks.json)，並將摘要檔附在 `stepfun-check-in-report`。只有此 job 取得 `contents: write` 權限；若儲存庫規則禁止 Actions 寫入該分支，發布步驟會失敗。
 
-公開的 `streaks.json` 只包含顯示資料，不包含登入狀態、Cookie 或錯誤訊息。每個帳號提供 `account`、`name`、`label`、`status`、`finishedAt`、`currentPoints`、`remainingCredits`、`streak`、`lastCheckInDate` 與去重後的 `checkInDates`。連續簽到以台北日期計算，同日重跑或已簽到不會重複加天。
+公開的 `streaks.json` 只包含顯示資料，不包含登入狀態、Cookie 或錯誤訊息。每個帳號提供 `account`、`name`、`label`、`status`、`finishedAt`、`currentPoints`、`remainingCredits`、`platformBalance`、`streak`、`lastCheckInDate` 與去重後的 `checkInDates`。`platformBalance` 只有在該次執行有查詢餘額時才有值，且只包含讀取狀態、幣別、時間與帳戶金額等金額欄位，不含診斷訊息。連續簽到以台北日期計算，同日重跑或已簽到不會重複加天。
 
 ## 每日自動執行時段
 
@@ -108,6 +111,17 @@ npm test
 
 本機結果預設寫入 `artifacts/claim-result.json`；截圖寫入 `screenshots/`。
 
+### 手動查詢開放平台餘額
+
+餘額查詢與每日簽到是分開的，需要時才執行：
+
+```bash
+npm run balance                 # 使用 STEPFUN_PLATFORM_STORAGE_STATE_B64 或 STEPFUN_STORAGE_STATE_B64
+npm run balance -- auth-01.json # 或直接指定 Storage State 檔案
+```
+
+若要在簽到的同時一併查詢，可設定 `STEPFUN_PLATFORM_BALANCE=1` 再執行 `npm run claim`。
+
 ## 環境變數
 
 | 變數 | 預設值 | 說明 |
@@ -120,6 +134,9 @@ npm test
 | `STEPFUN_SCREENSHOT_DIR` | `./screenshots` | 截圖輸出資料夾 |
 | `STEPFUN_RESULT_DIR` | `./artifacts` | 結果輸出資料夾 |
 | `STEPFUN_BROWSER` | `chromium` | `chromium`、`firefox` 或 `edge` |
+| `STEPFUN_PLATFORM_BALANCE` | `0` | 設為 `1` 才會在簽到時一併讀取開放平台餘額 |
+| `STEPFUN_PLATFORM_STORAGE_STATE_B64` | 無 | 選用；開放平台餘額查詢專用的 Storage State，未設定時沿用聊天登入狀態 |
+| `STEPFUN_PLATFORM_COOKIE` | 無 | 選用；開放平台餘額查詢專用的 Cookie Header |
 | `STEPFUN_SECRET_WRITE_TOKEN` | 無 | 可選；具備 Secrets 讀寫權限的 PAT，用於寫回更新後的 Storage State |
 
 ## 桌面登入工具
@@ -143,6 +160,7 @@ dotnet run --project StepFunFlow/StepFunFlow.csproj
 - **登入狀態過期**：重新取得 Storage State 或 Cookie，並更新對應的 `STEPFUN_*` Secret。
 - **沒有觀察到 `daily_check_in`**：到 workflow Artifact 查看 `daily-check-in-not-observed` 截圖；StepFun 頁面若改版，可能需要調整 `scripts/claim-daily-check-in.mjs` 的簽到控制項選擇器或 mission endpoint。
 - **已簽到卻顯示失敗**：查看結果訊息；程式會辨識常見的「今日已簽到」文案，若服務回傳新的文案，可補到 `scripts/stepfun-mission.mjs`。
+- **讀不到開放平台餘額**：`platform.stepfun.com` 與聊天站是各自獨立的登入。截圖會存成 `platform-balance-login-required`；請改設該帳號的 `STEPFUN_PLATFORM_STORAGE_STATE_B64_N`，或在擷取登入狀態時一併登入開放平台。
 - **排程沒有準時執行**：GitHub Actions 的排程可能延遲，先手動執行驗證設定。
 - **需要 OTP、Google 登入或 CAPTCHA**：先在本機正常完成登入，再更新 Storage State／Cookie；此專案不會自動繞過驗證。
 

@@ -1,8 +1,8 @@
-import { chromium, firefox } from 'playwright';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { parseCookieHeader, resolveBrowserEngine, storageStateFile } from './browser-session.mjs';
 import { readCurrentPoints } from './current-points.mjs';
+import { PLATFORM_ORIGIN, formatAmount, readPlatformBalance } from './platform-balance.mjs';
 import { canRotate, inspectSession, updateRepositorySecret } from './session-store.mjs';
 import { isDailyCheckInMissionRequest, parseMissionResult } from './stepfun-mission.mjs';
 
@@ -19,6 +19,12 @@ const RESULT_DIR = process.env.STEPFUN_RESULT_DIR || './artifacts';
 const SESSION_WARN_DAYS = Number(process.env.STEPFUN_SESSION_WARN_DAYS) || 7;
 const BROWSER_NAME = (process.env.STEPFUN_BROWSER || 'chromium').trim().toLowerCase();
 const SECRET_WRITE_TOKEN = process.env.STEPFUN_SECRET_WRITE_TOKEN;
+const PLATFORM_STATE_B64 = process.env.STEPFUN_PLATFORM_STORAGE_STATE_B64;
+const PLATFORM_COOKIE_HEADER = process.env.STEPFUN_PLATFORM_COOKIE;
+// The daily check-in is the fixed job; reading the open platform balance is an
+// extra the operator asks for, so it stays off unless STEPFUN_PLATFORM_BALANCE
+// is switched on (the workflow exposes it as a manual-run input).
+const READ_PLATFORM_BALANCE = /^(?:1|true|yes|on)$/i.test((process.env.STEPFUN_PLATFORM_BALANCE ?? '').trim());
 const SECRET_NAME =
   process.env.STEPFUN_SECRET_NAME ||
   (ACCOUNT_NUMBER ? 'STEPFUN_STORAGE_STATE_B64_' + ACCOUNT_NUMBER : null);
@@ -27,6 +33,8 @@ const GITHUB_API_URL = process.env.GITHUB_API_URL || 'https://api.github.com';
 
 const sessionReport = { session: null, rotation: null };
 let currentPoints = null;
+let platformBalance = null;
+let sessionEverValid = false;
 let refreshedState = null;
 
 const DAILY_CHECK_IN_TEXT_RE = /(?:每日|每天|今日|今天)\s*(?:簽到|签到)|daily\s*(?:check.?in|sign.?in)/i;
@@ -59,89 +67,11 @@ async function writeClaimResult(status, message) {
     status,
     message,
     currentPoints,
+    platformBalance,
     finishedAt: new Date().toISOString(),
     ...sessionReport,
   };
   await writeFile(join(RESULT_DIR, 'claim-result.json'), JSON.stringify(result, null, 2) + '\n');
-}
-
-function resolveBrowserEngine() {
-  if (BROWSER_NAME === 'firefox') {
-    return {
-      name: 'firefox',
-      engine: firefox,
-      launchOptions: { headless: true },
-      contextOptions: { locale: 'zh-CN' },
-    };
-  }
-
-  if (BROWSER_NAME === 'edge' || BROWSER_NAME === 'msedge') {
-    return {
-      name: 'edge',
-      engine: chromium,
-      launchOptions: {
-        headless: true,
-        channel: 'msedge',
-        args: ['--disable-blink-features=AutomationControlled'],
-      },
-      contextOptions: {
-        locale: 'zh-CN',
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
-      },
-    };
-  }
-
-  if (BROWSER_NAME === 'chromium' || BROWSER_NAME === 'chrome') {
-    return {
-      name: 'chromium',
-      engine: chromium,
-      launchOptions: {
-        headless: true,
-        args: ['--disable-blink-features=AutomationControlled'],
-      },
-      contextOptions: {
-        locale: 'zh-CN',
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-      },
-    };
-  }
-
-  throw new Error(
-    'Unsupported STEPFUN_BROWSER="' + BROWSER_NAME + '". Use chromium (default), firefox, or edge.',
-  );
-}
-
-function parseCookieHeader(header) {
-  return header
-    .split(';')
-    .map((part) => {
-      const separator = part.indexOf('=');
-      if (separator < 1) throw new Error('STEPFUN_COOKIE contains an invalid cookie segment.');
-      return {
-        name: part.slice(0, separator).trim(),
-        value: part.slice(separator + 1).trim(),
-        url: HOME_URL,
-        sameSite: 'Lax',
-      };
-    })
-    .filter(({ name, value }) => name && value);
-}
-
-async function storageStateFile() {
-  if (!STATE_B64) return undefined;
-  const directory = await mkdtemp(join(tmpdir(), 'stepfun-state-'));
-  const file = join(directory, 'storage-state.json');
-  try {
-    const decoded = Buffer.from(STATE_B64, 'base64');
-    const parsed = JSON.parse(decoded.toString('utf8'));
-    await writeFile(file, decoded);
-    return { directory, file, parsed };
-  } catch {
-    await rm(directory, { recursive: true, force: true });
-    throw new Error('STEPFUN_STORAGE_STATE_B64 is not valid base64-encoded Playwright storage state JSON.');
-  }
 }
 
 function reportSessionLifetime(state, label) {
@@ -351,7 +281,7 @@ async function tryCheckInOnce(browser, state, contextOptions) {
     ...(state ? { storageState: state.file } : {}),
     ...contextOptions,
   });
-  if (COOKIE_HEADER) await context.addCookies(parseCookieHeader(COOKIE_HEADER));
+  if (COOKIE_HEADER) await context.addCookies(parseCookieHeader(COOKIE_HEADER, HOME_URL));
 
   const page = await context.newPage();
   let sessionValid = false;
@@ -369,6 +299,7 @@ async function tryCheckInOnce(browser, state, contextOptions) {
     }
 
     sessionValid = true;
+    sessionEverValid = true;
     missionObserver = observeDailyMission(page);
     log('Opening StepFun newcomer benefits page and waiting for its official daily_check_in event…');
     await page.goto(CHECK_IN_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -410,18 +341,75 @@ async function tryCheckInOnce(browser, state, contextOptions) {
   }
 }
 
+/**
+ * Read the open platform balance after the check-in, in its own context.
+ * The platform is a separate site from the chat app: it uses the dedicated
+ * platform login state when one is configured, otherwise the chat login state,
+ * which only reaches it when the same browser session also signed in there.
+ * A missing balance is reported, never fatal.
+ */
+async function readBalance(browser, chatState, contextOptions) {
+  const platformState = PLATFORM_STATE_B64
+    ? await storageStateFile(PLATFORM_STATE_B64, 'STEPFUN_PLATFORM_STORAGE_STATE_B64').catch((error) => {
+        warn(cleanError(error));
+        return undefined;
+      })
+    : chatState;
+  const context = await browser.newContext({
+    ...(platformState ? { storageState: platformState.file } : {}),
+    ...contextOptions,
+  });
+  // A chat Cookie header does not authenticate the platform, so only the
+  // platform's own header is planted here.
+  if (PLATFORM_COOKIE_HEADER) {
+    await context.addCookies(
+      parseCookieHeader(PLATFORM_COOKIE_HEADER, PLATFORM_ORIGIN + '/', 'STEPFUN_PLATFORM_COOKIE'),
+    );
+  }
+  const page = await context.newPage();
+
+  try {
+    log('Opening the StepFun open platform account overview to read the balance…');
+    const outcome = await readPlatformBalance(page);
+    platformBalance = {
+      status: outcome.status,
+      message: outcome.message,
+      ...(outcome.balance ?? {}),
+    };
+
+    if (outcome.status === 'ok') {
+      const amount = formatAmount(outcome.balance.accountBalance, outcome.balance.currency);
+      log('Open platform balance: ' + (amount ?? 'account amount not shown') +
+        ' (' + PLATFORM_ORIGIN + ')');
+    } else {
+      await saveScreenshot(page, 'platform-balance-' + outcome.status.replaceAll('_', '-'));
+      warn('Could not read the open platform balance: ' + outcome.message);
+    }
+  } catch (error) {
+    platformBalance = { status: 'unavailable', message: cleanError(error) };
+    warn('Could not read the open platform balance: ' + cleanError(error));
+  } finally {
+    await context.close().catch(() => {});
+    if (platformState && platformState !== chatState) {
+      await rm(platformState.directory, { recursive: true, force: true });
+    }
+  }
+}
+
 async function main() {
   if (!STATE_B64 && !COOKIE_HEADER) {
     throw new Error('Set STEPFUN_STORAGE_STATE_B64 (recommended) or STEPFUN_COOKIE in GitHub Actions secrets.');
   }
 
-  const state = await storageStateFile();
+  const state = await storageStateFile(STATE_B64, 'STEPFUN_STORAGE_STATE_B64');
   let browser;
+  let contextOptions = {};
   let claimed = false;
   let resultMessage = 'Daily check-in was not completed.';
 
   try {
-    const browserInfo = resolveBrowserEngine();
+    const browserInfo = resolveBrowserEngine(BROWSER_NAME);
+    contextOptions = browserInfo.contextOptions;
     log('Using Playwright browser: ' + browserInfo.name);
     browser = await browserInfo.engine.launch(browserInfo.launchOptions);
 
@@ -453,6 +441,11 @@ async function main() {
     resultMessage = cleanError(error);
     throw error;
   } finally {
+    // The balance is extra reporting, so it runs after the check-in verdict is
+    // settled and only when there is a session that can reach the platform.
+    if (browser && READ_PLATFORM_BALANCE && (PLATFORM_STATE_B64 || PLATFORM_COOKIE_HEADER || sessionEverValid)) {
+      await readBalance(browser, state, contextOptions);
+    }
     await browser?.close();
     if (refreshedState) {
       reportSessionLifetime(refreshedState, 'after run');

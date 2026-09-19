@@ -14,6 +14,11 @@ on:
     # 11:00 Asia/Taipei (UTC 03:00)
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      read_platform_balance:
+        description: 'Also read the open platform account balance (manual runs only)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -164,6 +169,13 @@ jobs:
       STEPFUN_ACCOUNT_NAME: ${{ vars[format('STEPFUN_ACCOUNT_NAME_{0}', matrix.account)] || (matrix.account == 1 && 'huang1988pioneer' || matrix.account == 2 && 'abuhg17' || matrix.account == 3 && 'goldshoot0720' || format('account-{0}', matrix.account)) }}
       STEPFUN_STORAGE_STATE_B64: ${{ secrets[format('STEPFUN_STORAGE_STATE_B64_{0}', matrix.account)] }}
       STEPFUN_COOKIE: ${{ secrets[format('STEPFUN_COOKIE_{0}', matrix.account)] }}
+      # The balance read is an extra, requested per manual run; scheduled runs only
+      # do the check-in.
+      STEPFUN_PLATFORM_BALANCE: ${{ inputs.read_platform_balance && '1' || '0' }}
+      # Optional: only needed when the open platform balance needs its own login
+      # state. Otherwise the account's chat login state is reused for the read.
+      STEPFUN_PLATFORM_STORAGE_STATE_B64: ${{ secrets[format('STEPFUN_PLATFORM_STORAGE_STATE_B64_{0}', matrix.account)] }}
+      STEPFUN_PLATFORM_COOKIE: ${{ secrets[format('STEPFUN_PLATFORM_COOKIE_{0}', matrix.account)] }}
       STEPFUN_MAX_RETRIES: '2'
       STEPFUN_SCREENSHOT_DIR: './screenshots'
       STEPFUN_RESULT_DIR: './artifacts'

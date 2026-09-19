@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "claim": "node scripts/claim-daily-check-in.mjs",
-    "check": "node --check scripts/claim-daily-check-in.mjs && node --check scripts/stepfun-mission.mjs && node --check scripts/current-points.mjs && node --check scripts/session-store.mjs && node --check scripts/summarize-claim-results.mjs && node --check scripts/streaks.mjs",
-    "test": "node --test scripts/streaks.test.mjs scripts/stepfun-mission.test.mjs",
+    "balance": "node scripts/query-platform-balance.mjs",
+    "check": "node --check scripts/claim-daily-check-in.mjs && node --check scripts/stepfun-mission.mjs && node --check scripts/current-points.mjs && node --check scripts/session-store.mjs && node --check scripts/summarize-claim-results.mjs && node --check scripts/streaks.mjs && node --check scripts/browser-session.mjs && node --check scripts/platform-balance.mjs && node --check scripts/query-platform-balance.mjs",
+    "test": "node --test scripts/streaks.test.mjs scripts/stepfun-mission.test.mjs scripts/current-points.test.mjs scripts/platform-balance.test.mjs",
     "summary": "node scripts/summarize-claim-results.mjs"
   },
   "devDependencies": {

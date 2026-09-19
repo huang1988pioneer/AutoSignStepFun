@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { formatAmount } from './platform-balance.mjs';
 import { updateStreak } from './streaks.mjs';
 
 const inputDir = process.argv[2] || 'collected';
@@ -22,6 +23,25 @@ function escapeCell(value) {
 function compact(value, length = 120) {
   const text = String(value ?? '').replace(/\s+/g, ' ').trim();
   return text.length > length ? `${text.slice(0, length - 1)}…` : text || '—';
+}
+
+const AMOUNT_KEYS = ['accountBalance', 'rechargedTotal', 'giftRemaining', 'apiCredit', 'stepPlanCredit'];
+
+// Display data only: the balance amounts and how the read went, never the
+// diagnostic message, which can name environment variables.
+function publishableBalance(balance) {
+  if (!balance || typeof balance !== 'object') return null;
+  const amounts = {};
+  for (const key of AMOUNT_KEYS) {
+    amounts[key] = typeof balance[key] === 'number' && Number.isFinite(balance[key]) && balance[key] >= 0
+      ? balance[key] : null;
+  }
+  return {
+    status: typeof balance.status === 'string' ? balance.status : 'unavailable',
+    currency: typeof balance.currency === 'string' ? balance.currency : null,
+    ...amounts,
+    readAt: typeof balance.readAt === 'string' ? balance.readAt : null,
+  };
 }
 
 const byAccount = new Map();
@@ -63,6 +83,10 @@ const expiring = rows
   .filter((row) => typeof row.session?.daysLeft === 'number' && row.session.daysLeft <= sessionWarnDays)
   .sort((a, b) => a.session.daysLeft - b.session.daysLeft);
 const rotated = rows.filter((row) => row.rotation?.rotated === true).length;
+// The balance read is opt-in, so its metric and column only appear on the runs
+// that asked for it.
+const balanceRows = rows.filter((row) => row.platformBalance?.status);
+const balancesRead = balanceRows.filter((row) => row.platformBalance.status === 'ok').length;
 
 const headline = counts.failed
   ? `⚠️ ${counts.failed} account(s) need attention`
@@ -87,6 +111,7 @@ const lines = [
   `| Failed | ${counts.failed} |`,
   `| Skipped (no secret) | ${counts.skipped} |`,
   `| Session secrets rotated | ${rotated} |`,
+  ...(balanceRows.length ? [`| Platform balance read | ${balancesRead} / ${balanceRows.length} |`] : []),
   `| Logins expiring ≤ ${sessionWarnDays}d | ${expiring.length} |`,
   '',
   ...(runUrl ? [`- Workflow run: ${runUrl}`, ''] : []),
@@ -119,12 +144,21 @@ if (expiring.length) {
 
 const activeRows = rows.filter((row) => row.status !== 'skipped');
 if (activeRows.length) {
-  lines.push('### Account results', '', '| # | Account | Status | 當前點數 | 連續簽到天數 | Note |', '| ---: | --- | --- | ---: | ---: | --- |');
+  const showBalance = balanceRows.length > 0;
+  lines.push(
+    '### Account results',
+    '',
+    `| # | Account | Status | 當前點數 |${showBalance ? ' 開放平台餘額 |' : ''} 連續簽到天數 | Note |`,
+    `| ---: | --- | --- | ---: |${showBalance ? ' ---: |' : ''} ---: | --- |`,
+  );
   for (const row of activeRows) {
     const badge = row.status === 'checked_in' ? '✅ checked_in' : '❌ failed';
     const points = typeof row.currentPoints === 'number' && Number.isFinite(row.currentPoints) && row.currentPoints >= 0
       ? row.currentPoints.toLocaleString('en-US') : '無法取得';
-    lines.push(`| ${row.account} | ${escapeCell(row.name)} | ${badge} | ${points} | ${row.streak} | ${escapeCell(compact(row.message))} |`);
+    const balance = publishableBalance(row.platformBalance);
+    const amount = balance ? formatAmount(balance.accountBalance, balance.currency ?? undefined) : null;
+    const balanceCell = showBalance ? ` ${amount ?? '無法取得'} |` : '';
+    lines.push(`| ${row.account} | ${escapeCell(row.name)} | ${badge} | ${points} |${balanceCell} ${row.streak} | ${escapeCell(compact(row.message))} |`);
   }
   lines.push('');
 }
@@ -144,6 +178,7 @@ const accounts = rows.map((row) => ({
     ? row.currentPoints : null,
   remainingCredits: typeof row.currentPoints === 'number' && Number.isFinite(row.currentPoints) && row.currentPoints >= 0
     ? row.currentPoints : null,
+  platformBalance: publishableBalance(row.platformBalance),
   finishedAt: row.finishedAt ?? null,
 }));
 mkdirSync(outputDir, { recursive: true });
