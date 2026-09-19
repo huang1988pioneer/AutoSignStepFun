@@ -1,7 +1,7 @@
 {
   "name": "stepfun-daily-check-in",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "claim": "node scripts/claim-daily-check-in.mjs",
