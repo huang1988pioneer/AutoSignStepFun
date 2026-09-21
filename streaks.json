@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-21T05:33:58.247Z",
-  "runUrl": "https://github.com/huang1988pioneer/AutoSignStepFun/actions/runs/35563005678",
+  "generatedAt": "2026-09-21T06:47:53.388Z",
+  "runUrl": "https://github.com/huang1988pioneer/AutoSignStepFun/actions/runs/35568284478",
   "title": "StepFun daily check-in results",
   "accounts": [
     {
@@ -18,7 +18,7 @@
       "currentPoints": 189,
       "remainingCredits": 189,
       "platformBalance": null,
-      "finishedAt": "2026-09-21T05:33:09.550Z"
+      "finishedAt": "2026-09-21T06:47:17.230Z"
     },
     {
       "account": 2,
@@ -35,7 +35,7 @@
       "currentPoints": 120,
       "remainingCredits": 120,
       "platformBalance": null,
-      "finishedAt": "2026-09-21T05:33:45.593Z"
+      "finishedAt": "2026-09-21T06:47:28.835Z"
     },
     {
       "account": 3,
@@ -52,7 +52,7 @@
       "currentPoints": 120,
       "remainingCredits": 120,
       "platformBalance": null,
-      "finishedAt": "2026-09-21T05:33:35.133Z"
+      "finishedAt": "2026-09-21T06:47:42.678Z"
     },
     {
       "account": 4,
