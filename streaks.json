@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-25T10:35:33.261Z",
-  "runUrl": "https://github.com/huang1988pioneer/AutoSignStepFun/actions/runs/36121578671",
+  "generatedAt": "2026-09-25T18:09:04.479Z",
+  "runUrl": "https://github.com/huang1988pioneer/AutoSignStepFun/actions/runs/36169233445",
   "title": "StepFun daily check-in results",
   "accounts": [
     {
@@ -8,8 +8,8 @@
       "name": "huang1988pioneer",
       "label": "huang1988pioneer",
       "status": "checked_in",
-      "streak": 7,
-      "lastCheckInDate": "2026-09-25",
+      "streak": 8,
+      "lastCheckInDate": "2026-09-26",
       "checkInDates": [
         "2026-09-19",
         "2026-09-20",
@@ -17,20 +17,21 @@
         "2026-09-22",
         "2026-09-23",
         "2026-09-24",
-        "2026-09-25"
+        "2026-09-25",
+        "2026-09-26"
       ],
       "currentPoints": 170,
       "remainingCredits": 170,
       "platformBalance": null,
-      "finishedAt": "2026-09-25T10:34:56.441Z"
+      "finishedAt": "2026-09-25T18:08:23.439Z"
     },
     {
       "account": 2,
       "name": "abuhg17",
       "label": "abuhg17",
       "status": "checked_in",
-      "streak": 7,
-      "lastCheckInDate": "2026-09-25",
+      "streak": 8,
+      "lastCheckInDate": "2026-09-26",
       "checkInDates": [
         "2026-09-19",
         "2026-09-20",
@@ -38,20 +39,21 @@
         "2026-09-22",
         "2026-09-23",
         "2026-09-24",
-        "2026-09-25"
+        "2026-09-25",
+        "2026-09-26"
       ],
       "currentPoints": 100,
       "remainingCredits": 100,
       "platformBalance": null,
-      "finishedAt": "2026-09-25T10:34:59.409Z"
+      "finishedAt": "2026-09-25T18:08:48.570Z"
     },
     {
       "account": 3,
       "name": "goldshoot0720",
       "label": "goldshoot0720",
       "status": "checked_in",
-      "streak": 7,
-      "lastCheckInDate": "2026-09-25",
+      "streak": 8,
+      "lastCheckInDate": "2026-09-26",
       "checkInDates": [
         "2026-09-19",
         "2026-09-20",
@@ -59,12 +61,13 @@
         "2026-09-22",
         "2026-09-23",
         "2026-09-24",
-        "2026-09-25"
+        "2026-09-25",
+        "2026-09-26"
       ],
       "currentPoints": 100,
       "remainingCredits": 100,
       "platformBalance": null,
-      "finishedAt": "2026-09-25T10:35:17.801Z"
+      "finishedAt": "2026-09-25T18:08:50.528Z"
     },
     {
       "account": 4,
@@ -461,8 +464,8 @@
   "streakSource": "recorded_check_ins",
   "summary": {
     "recorded": 33,
-    "max": 7,
+    "max": 8,
     "min": 0,
-    "average": 0.6
+    "average": 0.7
   }
 }
