@@ -1,18 +1,19 @@
 name: StepFun daily check-in
 
 on:
-  schedule:
-    # GitHub Actions uses UTC.
-    # 05:00, 08:00, 11:00, 13:00, and 21:00 Asia/Taipei (UTC 21:00, 00:00, 03:00, 05:00, 13:00)
-    - cron: '0 21,5,13 * * *'
-    # 08:00 Asia/Taipei (UTC 00:00)
-    - cron: '0 0 * * *'
-    # 08:18 Asia/Taipei (UTC 00:18)
-    - cron: '18 0 * * *'
-    # 09:19 Asia/Taipei (UTC 01:19)
-    - cron: '19 1 * * *'
-    # 11:00 Asia/Taipei (UTC 03:00)
-    - cron: '0 3 * * *'
+  # Scheduled runs are paused since 2026-09-28. Uncomment the block below to resume.
+  # schedule:
+  #   # GitHub Actions uses UTC.
+  #   # 05:00, 08:00, 11:00, 13:00, and 21:00 Asia/Taipei (UTC 21:00, 00:00, 03:00, 05:00, 13:00)
+  #   - cron: '0 21,5,13 * * *'
+  #   # 08:00 Asia/Taipei (UTC 00:00)
+  #   - cron: '0 0 * * *'
+  #   # 08:18 Asia/Taipei (UTC 00:18)
+  #   - cron: '18 0 * * *'
+  #   # 09:19 Asia/Taipei (UTC 01:19)
+  #   - cron: '19 1 * * *'
+  #   # 11:00 Asia/Taipei (UTC 03:00)
+  #   - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       read_platform_balance:

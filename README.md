@@ -1,5 +1,7 @@
 # AutoSignStepFun
 
+> **⏸ 自 2026-09-28 起暫停自動執行。** 排程已停用，目前只能從 GitHub Actions 手動執行；若要恢復，取消 `.github/workflows/stepfun-daily-check-in.yml` 中 `schedule` 區塊的註解即可。
+
 使用 GitHub Actions 自動完成 StepFun 每日簽到。工作流程每天在多個台北時間時段執行，也可以手動觸發；支援最多 33 個帳號，失敗時會保留截圖與每帳號結果供排查。
 
 ## 功能
@@ -62,7 +64,9 @@ base64 -w0 auth.json
 
 ## 每日自動執行時段
 
-GitHub Actions 每天會在下列台北時間（UTC+8）各自執行一次：
+> 目前已暫停（自 2026-09-28 起）；以下為恢復排程後的執行時段。
+
+恢復後，GitHub Actions 每天會在下列台北時間（UTC+8）各自執行一次：
 
 | 時段 | 執行方式 |
 | --- | --- |
